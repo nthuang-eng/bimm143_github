@@ -1,0 +1,241 @@
+---
+title: "Class 14: RNASeq Mini-Project"
+author: "Nathalie Huang (PID: A19134713)"
+format: pdf
+toc: TRUE
+---
+
+## Background
+
+The data for today's mini-project comes from a knock-down study of an important HOX gene.
+
+## Data Import
+
+```{r}
+countData <- read.csv("GSE37704_featurecounts.csv", row.names=1)
+head(countData)
+colData <- read.csv("GSE37704_metadata.csv", row.names=1)
+head(colData)
+```
+
+### Clean up (data tidying)
+
+> Q. Complete the code below to remove the troublesome first column from countData
+
+```{r}
+countData <- as.matrix(countData[, 2:ncol(countData)])
+head(countData)
+```
+
+> Q. Complete the code below to filter countData to exclude genes (i.e. rows) where we have 0 read count across all samples (i.e. columns).
+
+```{r}
+countData <- countData[rowSums(countData) > 0, ]
+head(countData)
+```
+
+## DESeq Analysis
+
+### Setting up the DESeq object
+
+```{r}
+library(DESeq2)
+```
+
+
+```{r}
+dds = DESeqDataSetFromMatrix(countData= countData,
+                             colData= colData,
+                             design=~ condition)
+
+dds = DESeq(dds)
+
+dds
+```
+
+### Running DESeq
+
+```{r}
+res = results(dds)
+```
+
+### Getting results
+
+> Q. Call the summary() function on your results to get a sense of how many genes are up or down-regulated at the default 0.1 p-value cutoff.
+
+```{r}
+summary(res)
+```
+
+## Volcano Plot
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(res) + 
+  aes(x = log2FoldChange,
+      y = -log10(padj)) +
+  geom_point()
+```
+
+> Q. Improve this plot by completing the below code, which adds color, axis labels and cutoff lines:
+
+```{r}
+# Make a color vector for all genes
+mycols <- rep("gray", nrow(res))
+
+# Color blue the genes with fold change above 2
+mycols[ abs(res$log2FoldChange) > 2 ] <- "blue"
+
+# Color gray those with adjusted p-value more than 0.01
+mycols[ res$padj > 0.01 ] <- "gray"
+
+ggplot(res) +
+  aes(x=log2FoldChange,
+      y=-log10(padj)) +
+  geom_point(color = mycols) +
+  xlab("Log2(FoldChange)") +
+  ylab("-Log(P-value)") +
+  geom_vline(xintercept = c(-2,2)) +
+  geom_hline(yintercept = -log10(0.01))
+```
+
+## Add Annotation
+
+> Q. Use the mapIDs() function multiple times to add SYMBOL, ENTREZID and GENENAME annotation to our results by completing the code below.
+
+```{r}
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+
+columns(org.Hs.eg.db)
+
+res$symbol = mapIds(org.Hs.eg.db,
+                    keys=row.names(res), 
+                    keytype="ENSEMBL",
+                    column="SYMBOL",
+                    multiVals="first")
+
+res$entrez = mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="ENTREZID",
+                    multiVals="first")
+
+res$name =   mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="GENENAME",
+                    multiVals="first")
+
+head(res, 10)
+```
+
+> Q. Finally for this section let's reorder these results by adjusted p-value and save them to a CSV file in your current project directory.
+
+```{r}
+res = res[order(res$pvalue),]
+write.csv(res, file="deseq_results.csv")
+```
+
+## Pathway Analysis
+
+### KEGG
+
+```{r}
+#Run in R console
+#BiocManager::install( c("pathview", "gage", "gageData") )
+```
+
+
+```{r}
+library(pathview)
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+```{r}
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+```
+
+```{r}
+attributes(keggres)
+```
+
+```{r}
+head(keggres$less)
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110")
+```
+
+![](hsa04110.pathview.png) 
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110", kegg.native=FALSE)
+```
+
+```{r}
+# Focus on top 5 upregulated pathways
+keggrespathways <- rownames(keggres$greater)[1:5]
+
+# Extract the 8 character long IDs part of each string
+keggresids = substr(keggrespathways, start=1, stop=8)
+keggresids
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id=keggresids, species="hsa")
+```
+
+![](hsa04640.pathview.png) 
+![](hsa04630.pathview.png) 
+![](hsa00140.pathview.png) 
+![](hsa04142.pathview.png) 
+![](hsa04330.pathview.png) 
+
+### GO
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets=gobpsets)
+
+lapply(gobpres, head)
+```
+
+### Reactome
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+```
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
+> Q. What pathway has the most significant “Entities p-value”? Do the most significant pathways listed match your previous KEGG results? What factors could cause differences between the two methods?
+
+Most significant "Entities p-value": Cell Cycle, Mitotic and Cell Cycle
+Yes, the most significant pathways listed match my previous KEGG results. The KEGG results identified Cell Cycle–related pathways as the most significant. 
+Factors that could cause differences between the two methods are different gene background sizes, how broad the pathways are, and pvalue calculations.
