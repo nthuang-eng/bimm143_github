@@ -15,3 +15,9 @@ Class 07 [Introduction to machine learning for Bioinformatics](class07/class07.p
 
 Class08 [Unsupervised Learning Mini-Project](class08_mini_project/class08.pdf)
 
+Class09 [Candy Mini-Project](class09/class09.pdf)
+
+Class10 [Structural Bioinformatics (pt1)](class10/class10.pdf)
+
+
+
