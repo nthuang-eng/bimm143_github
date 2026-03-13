@@ -9,5 +9,9 @@ Class 04 [R fundamentals](class04/class04.pdf)
 
 Class 05 [Data viz with ggplot](class05/class05.pdf)
 
-Class 06 etc.
+Class 06 [R functions and R packages from CRAN and BioConductor](class06/class06.pdf)
+
+Class 07 [Introduction to machine learning for Bioinformatics](class07/class07.pdf)
+
+Class08 [Unsupervised Learning Mini-Project](class08_mini_project/class08.pdf)
 
