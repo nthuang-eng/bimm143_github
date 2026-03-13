@@ -19,5 +19,9 @@ Class09 [Candy Mini-Project](class09/class09.pdf)
 
 Class10 [Structural Bioinformatics (pt1)](class10/class10.pdf)
 
+Class 11 [Structural Bioinformatics (pt2. Focus on new AlphaFold2)](class11/class11.pdf)
+
+Class 13 [Transcriptomics and the analysis of RNA-Seq data](class13/class13.pdf)
+
 
 
